@@ -214,19 +214,6 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 
-	var countBuying int
-	err = tx.Get(&countBuying, "SELECT COUNT(*) FROM buying WHERE room_name = ? AND item_id = ?", roomName, itemID)
-	if err != nil {
-		log.Println(err)
-		tx.Rollback()
-		return false
-	}
-	if countBuying != countBought {
-		tx.Rollback()
-		log.Println(roomName, itemID, countBought+1, " is already bought")
-		return false
-	}
-
 	totalMilliIsu := new(big.Int)
 	var addings []Adding
 	err = tx.Select(&addings, "SELECT isu FROM adding WHERE room_name = ? AND time <= ?", roomName, reqTime)
