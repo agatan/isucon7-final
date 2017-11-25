@@ -1,0 +1,11 @@
+echo "Building..."
+GOOS=linux go build -v -o app ./webapp/go/src/app
+
+
+HOSTS="isu1 isu2 isu3 isu4"
+for host in "${HOSTS[@]}";
+do
+  ssh isucon@$host sudo systemctl stop cco.golang
+  scp ./app isucon@$host:/home/isucon/webapp/go/app
+  ssh isucon@$host sudo systemctl start cco.golang
+done
