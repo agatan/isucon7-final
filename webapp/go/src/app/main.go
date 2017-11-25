@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -112,7 +113,6 @@ func wsGameHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	initDB()
 	initRedisPool()
 	initHosts()
@@ -124,9 +124,12 @@ func main() {
 	muxByRoomName = map[string]*sync.Mutex{}
 
 	if debug {
+		log.SetFlags(log.LstdFlags | log.Lshortfile)
 		go func() {
 			log.Println(http.ListenAndServe(":6060", nil))
 		}()
+	} else {
+		log.SetOutput(ioutil.Discard)
 	}
 
 	r := mux.NewRouter()
