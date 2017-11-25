@@ -149,15 +149,6 @@ func big2exp(n *big.Int) Exponential {
 	return Exponential{t, int64(len(s) - 15)}
 }
 
-func getCurrentTime() (int64, error) {
-	var currentTime int64
-	err := db.Get(&currentTime, "SELECT floor(unix_timestamp(current_timestamp(3))*1000)")
-	if err != nil {
-		return 0, err
-	}
-	return currentTime, nil
-}
-
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 	mu := muxByRoomName[roomName]
 	mu.Lock()
@@ -362,12 +353,8 @@ func getStatus(roomName string) (*GameStatus, error) {
 	}
 
 	// calcStatusに時間がかかる可能性があるので タイムスタンプを取得し直す
-	latestTime, err := getCurrentTime()
-	if err != nil {
-		return nil, err
-	}
 
-	status.Time = latestTime
+	status.Time = int64(time.Now().UnixNano()) / 1000000
 	return status, err
 }
 
