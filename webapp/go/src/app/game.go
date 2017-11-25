@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"strconv"
+	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -203,6 +204,10 @@ func updateRoomTime(tx *sqlx.Tx, roomName string, reqTime int64) (int64, bool) {
 }
 
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
+	mu := muxByRoomName[roomName]
+	mu.Lock()
+	defer mu.Unlock()
+
 	tx, err := db.Beginx()
 	if err != nil {
 		log.Println(err)
@@ -247,6 +252,10 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 }
 
 func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
+	mu := muxByRoomName[roomName]
+	mu.Lock()
+	defer mu.Unlock()
+
 	tx, err := db.Beginx()
 	if err != nil {
 		log.Println(err)
@@ -326,6 +335,10 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 }
 
 func getStatus(roomName string) (*GameStatus, error) {
+	mu := muxByRoomName[roomName]
+	mu.Lock()
+	defer mu.Unlock()
+
 	tx, err := db.Beginx()
 	if err != nil {
 		return nil, err
@@ -528,6 +541,8 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []Adding, buyi
 func serveGameConn(ws *websocket.Conn, roomName string) {
 	log.Println(ws.RemoteAddr(), "serveGameConn", roomName)
 	defer ws.Close()
+
+	muxByRoomName[roomName] = new(sync.Mutex)
 
 	status, err := getStatus(roomName)
 	if err != nil {

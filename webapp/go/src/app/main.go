@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/handlers"
@@ -19,8 +20,9 @@ import (
 )
 
 var (
-	db       *sqlx.DB
-	webHosts []string
+	db            *sqlx.DB
+	webHosts      []string
+	muxByRoomName map[string]*sync.Mutex
 )
 
 func initHosts() {
@@ -113,6 +115,7 @@ func main() {
 	initDB()
 	initHosts()
 	initMasterItems(db)
+	muxByRoomName = map[string]*sync.Mutex{}
 
 	if debug {
 		go func() {
