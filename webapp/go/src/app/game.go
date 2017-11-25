@@ -170,7 +170,9 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 }
 
 func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
+	muxByRoomNameMu.Lock()
 	mu := muxByRoomName[roomName]
+	muxByRoomNameMu.Unlock()
 	mu.Lock()
 	defer mu.Unlock()
 
