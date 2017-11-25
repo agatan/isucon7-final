@@ -527,7 +527,9 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 	log.Println(ws.RemoteAddr(), "serveGameConn", roomName)
 	defer ws.Close()
 
-	muxByRoomName[roomName] = new(sync.Mutex)
+	if _, ok := muxByRoomName[roomName]; !ok {
+		muxByRoomName[roomName] = new(sync.Mutex)
+	}
 
 	status, err := getStatus(roomName)
 	if err != nil {
