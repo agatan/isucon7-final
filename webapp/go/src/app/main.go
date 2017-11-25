@@ -101,6 +101,11 @@ func wsGameHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	roomName := vars["room_name"]
+	muxByRoomNameMu.Lock()
+	if _, ok := muxByRoomName[roomName]; !ok {
+		muxByRoomName[roomName] = new(sync.Mutex)
+	}
+	muxByRoomNameMu.Unlock()
 	addMemberToRoom(roomName)
 
 	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
