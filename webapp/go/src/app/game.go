@@ -11,7 +11,10 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
+	"golang.org/x/sync/singleflight"
 )
+
+var sg singleflight.Group
 
 type GameRequest struct {
 	RequestID int    `json:"request_id"`
@@ -567,12 +570,15 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 			}
 
 			if success {
-				// GameResponse を返却する前に 反映済みの GameStatus を返す
-				status, err := getStatus(roomName)
+				v, err, _ := sg.Do(fmt.Sprint(req.Time), func() (interface{}, error) {
+					return getStatus(roomName)
+				})
 				if err != nil {
 					log.Println(err)
 					return
 				}
+
+				status := v.(*GameStatus)
 
 				err = ws.WriteJSON(status)
 				if err != nil {
