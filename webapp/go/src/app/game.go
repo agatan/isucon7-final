@@ -198,6 +198,10 @@ func updateRoomTime(tx *sqlx.Tx, roomName string, reqTime int64) (int64, bool) {
 }
 
 func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
+	mu := muxByRoomName[roomName]
+	mu.Lock()
+	defer mu.Unlock()
+
 	tx, err := db.Beginx()
 	if err != nil {
 		log.Println(err)
