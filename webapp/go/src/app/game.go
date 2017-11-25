@@ -44,12 +44,6 @@ func (n Exponential) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("[%d,%d]", n.Mantissa, n.Exponent)), nil
 }
 
-type Adding struct {
-	RoomName string `json:"-" db:"room_name"`
-	Time     int64  `json:"time" db:"time"`
-	Isu      string `json:"isu" db:"isu"`
-}
-
 type Buying struct {
 	RoomName string `db:"room_name"`
 	ItemID   int    `db:"item_id"`
