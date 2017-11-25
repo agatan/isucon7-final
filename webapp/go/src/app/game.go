@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"strconv"
+	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -40,12 +41,6 @@ type Exponential struct {
 
 func (n Exponential) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("[%d,%d]", n.Mantissa, n.Exponent)), nil
-}
-
-type Adding struct {
-	RoomName string `json:"-" db:"room_name"`
-	Time     int64  `json:"time" db:"time"`
-	Isu      string `json:"isu" db:"isu"`
 }
 
 type Buying struct {
@@ -200,50 +195,6 @@ func updateRoomTime(tx *sqlx.Tx, roomName string, reqTime int64) (int64, bool) {
 	}
 
 	return currentTime, true
-}
-
-func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
-	tx, err := db.Beginx()
-	if err != nil {
-		log.Println(err)
-		return false
-	}
-
-	_, ok := updateRoomTime(tx, roomName, reqTime)
-	if !ok {
-		tx.Rollback()
-		return false
-	}
-
-	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, '0') ON DUPLICATE KEY UPDATE isu=isu", roomName, reqTime)
-	if err != nil {
-		log.Println(err)
-		tx.Rollback()
-		return false
-	}
-
-	var isuStr string
-	err = tx.QueryRow("SELECT isu FROM adding WHERE room_name = ? AND time = ? FOR UPDATE", roomName, reqTime).Scan(&isuStr)
-	if err != nil {
-		log.Println(err)
-		tx.Rollback()
-		return false
-	}
-	isu := str2big(isuStr)
-
-	isu.Add(isu, reqIsu)
-	_, err = tx.Exec("UPDATE adding SET isu = ? WHERE room_name = ? AND time = ?", isu.String(), roomName, reqTime)
-	if err != nil {
-		log.Println(err)
-		tx.Rollback()
-		return false
-	}
-
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		return false
-	}
-	return true
 }
 
 func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
@@ -528,6 +479,8 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []Adding, buyi
 func serveGameConn(ws *websocket.Conn, roomName string) {
 	log.Println(ws.RemoteAddr(), "serveGameConn", roomName)
 	defer ws.Close()
+
+	muxByRoomName[roomName] = new(sync.Mutex)
 
 	status, err := getStatus(roomName)
 	if err != nil {

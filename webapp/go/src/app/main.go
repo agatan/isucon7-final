@@ -112,6 +112,7 @@ func main() {
 	initDB()
 	initHosts()
 	initMasterItems(db)
+	initMuxByRoomName()
 
 	if debug {
 		go func() {
