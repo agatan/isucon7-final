@@ -13,10 +13,10 @@ var (
 
 type Buying struct {
 	ro.Model
-	RoomName string `db:"room_name"`
-	ItemID   int    `db:"item_id"`
-	Ordinal  int    `db:"ordinal"`
-	Time     int64  `db:"time"`
+	RoomName string `db:"room_name" redis:"room_name"`
+	ItemID   int    `db:"item_id" redis:"item_id"`
+	Ordinal  int    `db:"ordinal" redis:"ordinal"`
+	Time     int64  `db:"time" redis:"time"`
 }
 
 func (b *Buying) GetKeySuffix() string {
@@ -36,7 +36,7 @@ var buyingScorerFuncs = []types.ScorerFunc{
 
 func initBuyingStore() {
 	var err error
-	buyingStore, err = ro.New(redisPool.Get, &Adding{}, ro.WithScorers(buyingScorerFuncs))
+	buyingStore, err = ro.New(redisPool.Get, &Buying{}, ro.WithScorers(buyingScorerFuncs))
 	if err != nil {
 		panic(err)
 	}
