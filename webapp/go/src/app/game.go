@@ -147,20 +147,13 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	tx, err := db.Beginx()
-	if err != nil {
-		log.Println(err)
-		return false
-	}
-
-	_, ok := updateRoomTime(tx, roomName, reqTime)
+	_, ok := updateRoomTime(nil, roomName, reqTime)
 	if !ok {
-		tx.Rollback()
 		return false
 	}
 
 	a := &Adding{RoomName: roomName, Time: reqTime}
-	err = addingStore.Get(a)
+	err := addingStore.Get(a)
 	if err != nil {
 		a.Isu = "0"
 	}
