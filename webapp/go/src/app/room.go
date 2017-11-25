@@ -12,7 +12,7 @@ var (
 )
 
 func addMemberToRoom(room string) {
-	conn := redisPool.Get()
+	conn := sharedRedisPool.Get()
 	defer conn.Close()
 
 	host := getHostFromRoomName(room)
@@ -23,7 +23,7 @@ func addMemberToRoom(room string) {
 }
 
 func leaveMemberToRoom(room string) {
-	conn := redisPool.Get()
+	conn := sharedRedisPool.Get()
 	defer conn.Close()
 
 	host := getHostFromRoomName(room)
@@ -41,7 +41,7 @@ func isEmptyRoom(room string) bool {
 }
 
 func getHostFromRoomName(room string) string {
-	conn := redisPool.Get()
+	conn := sharedRedisPool.Get()
 	defer conn.Close()
 
 	host, err := redis.String(conn.Do("HGET", "host:room", room))
@@ -61,7 +61,7 @@ func getHostFromRoomName(room string) string {
 }
 
 func initRoom() {
-	conn := redisPool.Get()
+	conn := sharedRedisPool.Get()
 	defer conn.Close()
 	var err error
 

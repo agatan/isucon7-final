@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"math/big"
-	"strconv"
 	"sync"
 	"time"
 
@@ -41,13 +40,6 @@ type Exponential struct {
 
 func (n Exponential) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("[%d,%d]", n.Mantissa, n.Exponent)), nil
-}
-
-type Buying struct {
-	RoomName string `db:"room_name"`
-	ItemID   int    `db:"item_id"`
-	Ordinal  int    `db:"ordinal"`
-	Time     int64  `db:"time"`
 }
 
 type Schedule struct {
@@ -122,28 +114,10 @@ func (item *mItem) GetPrice(count int) *big.Int {
 	return new(big.Int).Mul(s, t)
 }
 
-func str2big(s string) *big.Int {
-	x := new(big.Int)
-	x.SetString(s, 10)
-	return x
-}
-
-func big2exp(n *big.Int) Exponential {
-	s := n.String()
-
-	if len(s) <= 15 {
-		return Exponential{n.Int64(), 0}
-	}
-
-	t, err := strconv.ParseInt(s[:15], 10, 64)
-	if err != nil {
-		log.Panic(err)
-	}
-	return Exponential{t, int64(len(s) - 15)}
-}
-
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
+	muxByRoomNameMu.Lock()
 	mu := muxByRoomName[roomName]
+	muxByRoomNameMu.Unlock()
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -200,27 +174,28 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	tx, err := db.Beginx()
-	if err != nil {
-		log.Println(err)
-		return false
-	}
+	// tx, err := db.Beginx()
+	// if err != nil {
+	//   log.Println(err)
+	//   return false
+	// }
 
-	_, ok := updateRoomTime(tx, roomName, reqTime)
+	_, ok := updateRoomTime(nil, roomName, reqTime)
 	if !ok {
-		tx.Rollback()
+		// tx.Rollback()
 		return false
 	}
 
-	var countBuying int
-	err = tx.Get(&countBuying, "SELECT COUNT(*) FROM buying WHERE room_name = ? AND item_id = ?", roomName, itemID)
+	countBuying, err := buyingStore.Count(buyingStore.Query(fmt.Sprintf("%s:item_id", roomName)).Eq(itemID))
+	// var countBuying int
+	// err = tx.Get(&countBuying, "SELECT COUNT(*) FROM buying WHERE room_name = ? AND item_id = ?", roomName, itemID)
 	if err != nil {
 		log.Println(err)
-		tx.Rollback()
+		// tx.Rollback()
 		return false
 	}
 	if countBuying != countBought {
-		tx.Rollback()
+		// tx.Rollback()
 		log.Println(roomName, itemID, countBought+1, " is already bought")
 		return false
 	}
@@ -236,19 +211,20 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 
 	totalMilliIsu := new(big.Int)
 	for _, a := range addings {
-		totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
+		totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), bi1000))
 	}
 
-	var buyings []Buying
-	err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
+	var buyings []*Buying
+	err = buyingStore.Select(&buyings, buyingStore.Query(fmt.Sprintf("%s:time", roomName)))
+	// err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
 	if err != nil {
 		log.Println(err)
-		tx.Rollback()
+		// tx.Rollback()
 		return false
 	}
 	for _, b := range buyings {
 		var item *mItem = MasterItems[b.ItemID]
-		cost := new(big.Int).Mul(item.GetPrice(b.Ordinal), big.NewInt(1000))
+		cost := new(big.Int).Mul(item.GetPrice(b.Ordinal), bi1000)
 		totalMilliIsu.Sub(totalMilliIsu, cost)
 		if b.Time <= reqTime {
 			gain := new(big.Int).Mul(item.GetPower(b.Ordinal), big.NewInt(reqTime-b.Time))
@@ -257,30 +233,38 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	}
 
 	var item *mItem = MasterItems[itemID]
-	need := new(big.Int).Mul(item.GetPrice(countBought+1), big.NewInt(1000))
+	need := new(big.Int).Mul(item.GetPrice(countBought+1), bi1000)
 	if totalMilliIsu.Cmp(need) < 0 {
 		log.Println("not enough")
-		tx.Rollback()
+		// tx.Rollback()
 		return false
 	}
 
-	_, err = tx.Exec("INSERT INTO buying(room_name, item_id, ordinal, time) VALUES(?, ?, ?, ?)", roomName, itemID, countBought+1, reqTime)
+	err = buyingStore.Set(&Buying{
+		RoomName: roomName,
+		ItemID:   itemID,
+		Ordinal:  countBought + 1,
+		Time:     reqTime,
+	})
+	// _, err = tx.Exec("INSERT INTO buying(room_name, item_id, ordinal, time) VALUES(?, ?, ?, ?)", roomName, itemID, countBought+1, reqTime)
 	if err != nil {
 		log.Println(err)
-		tx.Rollback()
+		// tx.Rollback()
 		return false
 	}
 
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		return false
-	}
+	// if err := tx.Commit(); err != nil {
+	//   log.Println(err)
+	//   return false
+	// }
 
 	return true
 }
 
 func getStatus(roomName string, ch chan *GameStatus) (*GameStatus, error) {
+	muxByRoomNameMu.Lock()
 	mu := muxByRoomName[roomName]
+	muxByRoomNameMu.Unlock()
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -337,8 +321,9 @@ func getStatus(roomName string, ch chan *GameStatus) (*GameStatus, error) {
 		return nil, err
 	}
 
-	buyings := []Buying{}
-	err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
+	buyings := []*Buying{}
+	err = buyingStore.Select(&buyings, buyingStore.Query(fmt.Sprintf("%s:time", roomName)))
+	// err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -364,7 +349,7 @@ func getStatus(roomName string, ch chan *GameStatus) (*GameStatus, error) {
 	return status, err
 }
 
-func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buyings []Buying) (*GameStatus, error) {
+func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buyings []*Buying) (*GameStatus, error) {
 	var (
 		// 1ミリ秒に生産できる椅子の単位をミリ椅子とする
 		totalMilliIsu = big.NewInt(0)
@@ -379,8 +364,8 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buy
 		itemPower0   = map[int]Exponential{} // ItemID => currentTime における Power
 		itemBuilt0   = map[int]int{}         // ItemID => currentTime における BuiltCount
 
-		addingAt = map[int64]*Adding{}  // Time => currentTime より先の Adding
-		buyingAt = map[int64][]Buying{} // Time => currentTime より先の Buying
+		addingAt = map[int64]*Adding{}   // Time => currentTime より先の Adding
+		buyingAt = map[int64][]*Buying{} // Time => currentTime より先の Buying
 	)
 
 	for itemID := range mItems {
@@ -391,7 +376,7 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buy
 	for _, a := range addings {
 		// adding は adding.time に isu を増加させる
 		if a.Time <= currentTime {
-			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
+			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), bi1000))
 		} else {
 			addingAt[a.Time] = a
 		}
@@ -401,7 +386,7 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buy
 		// buying は 即座に isu を消費し buying.time からアイテムの効果を発揮する
 		itemBought[b.ItemID]++
 		m := mItems[b.ItemID]
-		totalMilliIsu.Sub(totalMilliIsu, new(big.Int).Mul(m.GetPrice(b.Ordinal), big.NewInt(1000)))
+		totalMilliIsu.Sub(totalMilliIsu, new(big.Int).Mul(m.GetPrice(b.Ordinal), bi1000))
 
 		if b.Time <= currentTime {
 			itemBuilt[b.ItemID]++
@@ -419,7 +404,7 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buy
 		itemBuilt0[m.ItemID] = itemBuilt[m.ItemID]
 		price := m.GetPrice(itemBought[m.ItemID] + 1)
 		itemPrice[m.ItemID] = price
-		if 0 <= totalMilliIsu.Cmp(new(big.Int).Mul(price, big.NewInt(1000))) {
+		if 0 <= totalMilliIsu.Cmp(new(big.Int).Mul(price, bi1000)) {
 			itemOnSale[m.ItemID] = 0 // 0 は 時刻 currentTime で購入可能であることを表す
 		}
 	}
@@ -440,7 +425,7 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buy
 		// 時刻 t で発生する adding を計算する
 		if a, ok := addingAt[t]; ok {
 			updated = true
-			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
+			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), bi1000))
 		}
 
 		// 時刻 t で発生する buying を計算する
@@ -477,7 +462,7 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buy
 			if _, ok := itemOnSale[itemID]; ok {
 				continue
 			}
-			if 0 <= totalMilliIsu.Cmp(new(big.Int).Mul(itemPrice[itemID], big.NewInt(1000))) {
+			if 0 <= totalMilliIsu.Cmp(new(big.Int).Mul(itemPrice[itemID], bi1000)) {
 				itemOnSale[itemID] = t
 			}
 		}
@@ -520,9 +505,11 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 	log.Println(ws.RemoteAddr(), "serveGameConn", roomName)
 	defer ws.Close()
 
+	muxByRoomNameMu.Lock()
 	if _, ok := muxByRoomName[roomName]; !ok {
 		muxByRoomName[roomName] = new(sync.Mutex)
 	}
+	muxByRoomNameMu.Unlock()
 
 	tickerIsRunningMu.Lock()
 	ts, ok := tickerIsRunnings[roomName]
