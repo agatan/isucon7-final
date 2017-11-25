@@ -1,6 +1,15 @@
 package main
 
-import "github.com/garyburd/redigo/redis"
+import (
+	"sync"
+
+	"github.com/garyburd/redigo/redis"
+)
+
+var (
+	roomMemberCountsMu sync.Mutex
+	roomMemberCounts   = map[string]int{}
+)
 
 func addMemberToRoom(room string) {
 	conn := sharedRedisPool.Get()
@@ -8,6 +17,9 @@ func addMemberToRoom(room string) {
 
 	host := getHostFromRoomName(room)
 	conn.Do("ZINCRBY", "host:member_count", 1, host)
+	roomMemberCountsMu.Lock()
+	roomMemberCounts[room] = roomMemberCounts[room] + 1
+	roomMemberCountsMu.Unlock()
 }
 
 func leaveMemberToRoom(room string) {
@@ -16,6 +28,16 @@ func leaveMemberToRoom(room string) {
 
 	host := getHostFromRoomName(room)
 	conn.Do("ZINCRBY", "host:member_count", -1, host)
+	roomMemberCountsMu.Lock()
+	roomMemberCounts[room] = roomMemberCounts[room] - 1
+	roomMemberCountsMu.Unlock()
+}
+
+func isEmptyRoom(room string) bool {
+	roomMemberCountsMu.Lock()
+	n := roomMemberCounts[room]
+	roomMemberCountsMu.Unlock()
+	return n <= 0
 }
 
 func getHostFromRoomName(room string) string {
