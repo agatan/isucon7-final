@@ -113,6 +113,7 @@ func main() {
 	initRoom()
 	initRoomTime()
 	initMasterItems(db)
+	initAddingStore()
 	muxByRoomName = map[string]*sync.Mutex{}
 
 	if debug {
