@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -80,19 +79,14 @@ func getRoomHandler(w http.ResponseWriter, r *http.Request) {
 	roomName := vars["room_name"]
 	path := "/ws/" + url.PathEscape(roomName)
 
-	m := sha1.Sum([]byte(roomName))
-	var n int
-	for _, b := range m[:] {
-		n += int(b)
-	}
-	fmt.Printf("m: %d\n", n%len(webHosts))
+	host := getHostFromRoomName(roomName)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {
 		Host string `json:"host"`
 		Path string `json:"path"`
 	}{
-		Host: webHosts[n%len(webHosts)],
+		Host: host,
 		Path: path,
 	})
 }
@@ -101,6 +95,7 @@ func wsGameHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	roomName := vars["room_name"]
+	addMemberToRoom(roomName)
 
 	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
 	if _, ok := err.(websocket.HandshakeError); ok {
@@ -113,7 +108,9 @@ func wsGameHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	initDB()
+	initRedisPool()
 	initHosts()
+	initRoom()
 	initMasterItems(db)
 	muxByRoomName = map[string]*sync.Mutex{}
 
