@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"strconv"
@@ -553,6 +554,9 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 			err := ws.ReadJSON(&req)
 			if err != nil {
 				log.Println(err)
+				if err == io.EOF {
+					leaveMemberToRoom(roomName)
+				}
 				return
 			}
 
