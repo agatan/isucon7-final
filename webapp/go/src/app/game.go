@@ -154,7 +154,10 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	updateRoomTime(roomName, reqTime)
+	_, ok := updateRoomTime(roomName, reqTime)
+	if !ok {
+		return false
+	}
 
 	_, err := db.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, '0') ON DUPLICATE KEY UPDATE isu=isu", roomName, reqTime)
 	if err != nil {
@@ -186,6 +189,9 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	defer mu.Unlock()
 
 	updateRoomTime(roomName, reqTime)
+	if !ok {
+		return false
+	}
 
 	var countBuying int
 	err := db.Get(&countBuying, "SELECT COUNT(*) FROM buying WHERE room_name = ? AND item_id = ?", roomName, itemID)
