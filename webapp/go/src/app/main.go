@@ -114,7 +114,7 @@ func main() {
 
 	if debug {
 		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
+			log.Println(http.ListenAndServe(":6060", nil))
 		}()
 	}
 
