@@ -95,6 +95,9 @@ func wsGameHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	initDB()
+	initRedisPool()
+	initRoomStatusStore()
+	initRoomItemStore()
 
 	r := mux.NewRouter()
 	r.HandleFunc("/initialize", getInitializeHandler)
