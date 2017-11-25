@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 	_ "net/http/pprof"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gorilla/handlers"
@@ -17,8 +19,14 @@ import (
 )
 
 var (
-	db *sqlx.DB
+	db       *sqlx.DB
+	webHosts []string
 )
+
+func initHosts() {
+	webHosts = strings.Split(os.Getenv("ISU_WEB_HOSTS"), ",")
+	log.Println(webHosts)
+}
 
 func initDB() {
 	db_host := os.Getenv("ISU_DB_HOST")
@@ -70,12 +78,18 @@ func getRoomHandler(w http.ResponseWriter, r *http.Request) {
 	roomName := vars["room_name"]
 	path := "/ws/" + url.PathEscape(roomName)
 
+	m := md5.Sum([]byte(roomName))
+	var n int
+	for _, b := range m[:] {
+		n += int(b)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {
 		Host string `json:"host"`
 		Path string `json:"path"`
 	}{
-		Host: "",
+		Host: webHosts[n%len(webHosts)],
 		Path: path,
 	})
 }
@@ -96,6 +110,7 @@ func wsGameHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	initDB()
+	initHosts()
 
 	if debug {
 		go func() {
