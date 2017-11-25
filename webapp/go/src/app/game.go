@@ -89,6 +89,9 @@ type mItem struct {
 }
 
 func (item *mItem) GetPower(count int) *big.Int {
+	if pow := getPower(item, count); pow != nil {
+		return pow
+	}
 	// power(x):=(cx+1)*d^(ax+b)
 	a := item.Power1
 	b := item.Power2
@@ -102,6 +105,9 @@ func (item *mItem) GetPower(count int) *big.Int {
 }
 
 func (item *mItem) GetPrice(count int) *big.Int {
+	if pri := getPrice(item, count); pri != nil {
+		return pri
+	}
 	// price(x):=(cx+1)*d^(ax+b)
 	a := item.Price1
 	b := item.Price2
