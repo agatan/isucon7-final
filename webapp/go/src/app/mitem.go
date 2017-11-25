@@ -1,10 +1,14 @@
 package main
 
 import (
+	"sync"
+
 	"github.com/jmoiron/sqlx"
 )
 
 var MasterItems map[int]*mItem
+var priceByCountByItemID *sync.Map
+var powerByCountByItemID *sync.Map
 
 func initMasterItems(db *sqlx.DB) {
 	mItems := map[int]*mItem{}

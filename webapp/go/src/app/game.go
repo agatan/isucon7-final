@@ -89,9 +89,16 @@ type mItem struct {
 }
 
 func (item *mItem) GetPower(count int) *big.Int {
-	if pow := getPower(item, count); pow != nil {
-		return pow
+	var powerByCount map[int]*big.Int
+	if i, ok := powerByCountByItemID.Load(item.ItemID); ok {
+		powerByCount = i.(map[int]*big.Int)
+	} else {
+		powerByCount = map[int]*big.Int{}
 	}
+	if power, ok := powerByCount[count]; ok {
+		return power
+	}
+
 	// power(x):=(cx+1)*d^(ax+b)
 	a := item.Power1
 	b := item.Power2
@@ -101,13 +108,23 @@ func (item *mItem) GetPower(count int) *big.Int {
 
 	s := big.NewInt(c*x + 1)
 	t := new(big.Int).Exp(big.NewInt(d), big.NewInt(a*x+b), nil)
-	return new(big.Int).Mul(s, t)
+	power := new(big.Int).Mul(s, t)
+	powerByCount[count] = power
+	powerByCountByItemID.Store(item.ItemID, powerByCount)
+	return power
 }
 
 func (item *mItem) GetPrice(count int) *big.Int {
-	if pri := getPrice(item, count); pri != nil {
-		return pri
+	var priceByCount map[int]*big.Int
+	if i, ok := priceByCountByItemID.Load(item.ItemID); !ok {
+		priceByCount = i.(map[int]*big.Int)
+	} else {
+		priceByCount = map[int]*big.Int{}
 	}
+	if price, ok := priceByCount[count]; ok {
+		return price
+	}
+
 	// price(x):=(cx+1)*d^(ax+b)
 	a := item.Price1
 	b := item.Price2
@@ -117,7 +134,10 @@ func (item *mItem) GetPrice(count int) *big.Int {
 
 	s := big.NewInt(c*x + 1)
 	t := new(big.Int).Exp(big.NewInt(d), big.NewInt(a*x+b), nil)
-	return new(big.Int).Mul(s, t)
+	price := new(big.Int).Mul(s, t)
+	priceByCount[count] = price
+	priceByCountByItemID.Store(item.ItemID, priceByCount)
+	return price
 }
 
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
