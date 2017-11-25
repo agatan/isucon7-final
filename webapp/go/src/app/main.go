@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"net/url"
 	"os"
 	"time"
@@ -95,6 +96,12 @@ func wsGameHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	initDB()
+
+	if debug {
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
 
 	r := mux.NewRouter()
 	r.HandleFunc("/initialize", getInitializeHandler)
