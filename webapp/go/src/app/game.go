@@ -315,22 +315,17 @@ func getStatus(roomName string) (*GameStatus, error) {
 	}
 	newAddings := []Adding{{RoomName: roomName, Time: currentTime}}
 	deletableTimes := []int64{}
-	var totalMilliIsu = big.NewInt(0)
+	var totalIsu = big.NewInt(0)
 	for _, a := range addings {
 		// adding は adding.time に isu を増加させる
 		if a.Time <= currentTime {
-			totalMilliIsu.Add(totalMilliIsu, str2big(a.Isu))
+			totalIsu.Add(totalIsu, str2big(a.Isu))
 			deletableTimes = append(deletableTimes, a.Time)
 		} else {
 			newAddings = append(newAddings, a)
 		}
 	}
-	newAddings[0].Isu = totalMilliIsu.String()
-	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE isu=isu", roomName, currentTime, newAddings[0].Isu)
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
+	newAddings[0].Isu = totalIsu.String()
 	if len(deletableTimes) > 0 {
 		query, args, err := sqlx.In("DELETE FROM adding WHERE room_name = ? AND time in (?)", roomName, deletableTimes)
 		if err != nil {
@@ -342,6 +337,11 @@ func getStatus(roomName string) (*GameStatus, error) {
 			tx.Rollback()
 			return nil, err
 		}
+	}
+	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE isu=isu", roomName, currentTime, totalIsu.String())
+	if err != nil {
+		tx.Rollback()
+		return nil, err
 	}
 
 	buyings := []Buying{}
