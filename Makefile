@@ -8,10 +8,10 @@ update:
 
 .PHONY: test
 test:
-	go test -v webapp/go/src/app
+	go test -v ./webapp/go/src/app
 
 app:
-	go build -v webapp/go/src/app
+	go build -v ./webapp/go/src/app
 
 .PHONY: deploy
 deploy:
