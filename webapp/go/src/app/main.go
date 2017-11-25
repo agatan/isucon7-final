@@ -19,9 +19,10 @@ import (
 )
 
 var (
-	db            *sqlx.DB
-	webHosts      []string
-	muxByRoomName map[string]*sync.Mutex
+	db              *sqlx.DB
+	webHosts        []string
+	muxByRoomNameMu sync.Mutex
+	muxByRoomName   map[string]*sync.Mutex
 )
 
 func initHosts() {

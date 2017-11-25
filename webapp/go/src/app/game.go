@@ -115,7 +115,9 @@ func (item *mItem) GetPrice(count int) *big.Int {
 }
 
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
+	muxByRoomNameMu.Lock()
 	mu := muxByRoomName[roomName]
+	muxByRoomNameMu.Unlock()
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -260,7 +262,9 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 }
 
 func getStatus(roomName string) (*GameStatus, error) {
+	muxByRoomNameMu.Lock()
 	mu := muxByRoomName[roomName]
+	muxByRoomNameMu.Unlock()
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -497,9 +501,11 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 	log.Println(ws.RemoteAddr(), "serveGameConn", roomName)
 	defer ws.Close()
 
+	muxByRoomNameMu.Lock()
 	if _, ok := muxByRoomName[roomName]; !ok {
 		muxByRoomName[roomName] = new(sync.Mutex)
 	}
+	muxByRoomNameMu.Unlock()
 
 	status, err := getStatus(roomName)
 	if err != nil {
