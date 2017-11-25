@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"math/big"
-	"strconv"
 	"sync"
 	"time"
 
@@ -113,26 +112,6 @@ func (item *mItem) GetPrice(count int) *big.Int {
 	s := big.NewInt(c*x + 1)
 	t := new(big.Int).Exp(big.NewInt(d), big.NewInt(a*x+b), nil)
 	return new(big.Int).Mul(s, t)
-}
-
-func str2big(s string) *big.Int {
-	x := new(big.Int)
-	x.SetString(s, 10)
-	return x
-}
-
-func big2exp(n *big.Int) Exponential {
-	s := n.String()
-
-	if len(s) <= 15 {
-		return Exponential{n.Int64(), 0}
-	}
-
-	t, err := strconv.ParseInt(s[:15], 10, 64)
-	if err != nil {
-		log.Panic(err)
-	}
-	return Exponential{t, int64(len(s) - 15)}
 }
 
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
