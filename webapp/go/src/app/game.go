@@ -43,13 +43,6 @@ func (n Exponential) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("[%d,%d]", n.Mantissa, n.Exponent)), nil
 }
 
-type Buying struct {
-	RoomName string `db:"room_name"`
-	ItemID   int    `db:"item_id"`
-	Ordinal  int    `db:"ordinal"`
-	Time     int64  `db:"time"`
-}
-
 type Schedule struct {
 	Time       int64       `json:"time"`
 	MilliIsu   Exponential `json:"milli_isu"`
@@ -212,8 +205,9 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 
-	var countBuying int
-	err = tx.Get(&countBuying, "SELECT COUNT(*) FROM buying WHERE room_name = ? AND item_id = ?", roomName, itemID)
+	countBuying, err := buyingStore.Count(buyingStore.Query(fmt.Sprintf("%s:item_id", roomName)).Eq(itemID))
+	// var countBuying int
+	// err = tx.Get(&countBuying, "SELECT COUNT(*) FROM buying WHERE room_name = ? AND item_id = ?", roomName, itemID)
 	if err != nil {
 		log.Println(err)
 		tx.Rollback()
@@ -239,8 +233,9 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
 	}
 
-	var buyings []Buying
-	err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
+	var buyings []*Buying
+	err = buyingStore.Select(&buyings, buyingStore.Query(fmt.Sprintf("%s:time", roomName)))
+	// err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
 	if err != nil {
 		log.Println(err)
 		tx.Rollback()
@@ -264,7 +259,13 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 
-	_, err = tx.Exec("INSERT INTO buying(room_name, item_id, ordinal, time) VALUES(?, ?, ?, ?)", roomName, itemID, countBought+1, reqTime)
+	err = buyingStore.Set(&Buying{
+		RoomName: roomName,
+		ItemID:   itemID,
+		Ordinal:  countBought + 1,
+		Time:     reqTime,
+	})
+	// _, err = tx.Exec("INSERT INTO buying(room_name, item_id, ordinal, time) VALUES(?, ?, ?, ?)", roomName, itemID, countBought+1, reqTime)
 	if err != nil {
 		log.Println(err)
 		tx.Rollback()
@@ -337,8 +338,9 @@ func getStatus(roomName string) (*GameStatus, error) {
 		return nil, err
 	}
 
-	buyings := []Buying{}
-	err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
+	buyings := []*Buying{}
+	err = buyingStore.Select(&buyings, buyingStore.Query(fmt.Sprintf("%s:time", roomName)))
+	// err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -360,7 +362,7 @@ func getStatus(roomName string) (*GameStatus, error) {
 	return status, err
 }
 
-func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buyings []Buying) (*GameStatus, error) {
+func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buyings []*Buying) (*GameStatus, error) {
 	var (
 		// 1ミリ秒に生産できる椅子の単位をミリ椅子とする
 		totalMilliIsu = big.NewInt(0)
@@ -375,8 +377,8 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buy
 		itemPower0   = map[int]Exponential{} // ItemID => currentTime における Power
 		itemBuilt0   = map[int]int{}         // ItemID => currentTime における BuiltCount
 
-		addingAt = map[int64]*Adding{}  // Time => currentTime より先の Adding
-		buyingAt = map[int64][]Buying{} // Time => currentTime より先の Buying
+		addingAt = map[int64]*Adding{}   // Time => currentTime より先の Adding
+		buyingAt = map[int64][]*Buying{} // Time => currentTime より先の Buying
 	)
 
 	for itemID := range mItems {
