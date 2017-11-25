@@ -149,6 +149,20 @@ func big2exp(n *big.Int) Exponential {
 	return Exponential{t, int64(len(s) - 15)}
 }
 
+func exp2big(e Exponential) *big.Int {
+	n := big.NewInt(e.Mantissa)
+	return n.Exp(n, big.NewInt(e.Exponent), nil)
+}
+
+func getCurrentTime() (int64, error) {
+	var currentTime int64
+	err := db.Get(&currentTime, "SELECT floor(unix_timestamp(current_timestamp(3))*1000)")
+	if err != nil {
+		return 0, err
+	}
+	return currentTime, nil
+}
+
 func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 	mu := muxByRoomName[roomName]
 	mu.Lock()
@@ -347,7 +361,7 @@ func getStatus(roomName string) (*GameStatus, error) {
 		return nil, err
 	}
 
-	status, err := calcStatus(currentTime, mItems, newAddings, buyings)
+	status, err := calcStatus(roomName, currentTime, mItems, addings, buyings)
 	if err != nil {
 		return nil, err
 	}
@@ -358,7 +372,12 @@ func getStatus(roomName string) (*GameStatus, error) {
 	return status, err
 }
 
-func calcStatus(currentTime int64, mItems map[int]*mItem, addings []Adding, buyings []Buying) (*GameStatus, error) {
+var (
+	lastestStatusTableMu sync.Mutex
+	lastestStatusTable   = map[string]Schedule{}
+)
+
+func calcStatus(roomName string, currentTime int64, mItems map[int]*mItem, addings []Adding, buyings []Buying) (*GameStatus, error) {
 	var (
 		// 1ミリ秒に生産できる椅子の単位をミリ椅子とする
 		totalMilliIsu = big.NewInt(0)
@@ -377,12 +396,25 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []Adding, buyi
 		buyingAt = map[int64][]Buying{} // Time => currentTime より先の Buying
 	)
 
+	lastestStatusTableMu.Lock()
+	sched, ok := lastestStatusTable[roomName]
+	lastestStatusTableMu.Unlock()
+	var lastestUpdated int64
+	if ok {
+		lastestUpdated = sched.Time
+		totalMilliIsu = exp2big(sched.MilliIsu)
+		totalPower = exp2big(sched.TotalPower)
+	}
+
 	for itemID := range mItems {
 		itemPower[itemID] = big.NewInt(0)
 		itemBuilding[itemID] = []Building{}
 	}
 
 	for _, a := range addings {
+		if a.Time <= lastestUpdated {
+			continue
+		}
 		// adding は adding.time に isu を増加させる
 		if a.Time <= currentTime {
 			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
@@ -395,14 +427,17 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []Adding, buyi
 		// buying は 即座に isu を消費し buying.time からアイテムの効果を発揮する
 		itemBought[b.ItemID]++
 		m := mItems[b.ItemID]
-		totalMilliIsu.Sub(totalMilliIsu, new(big.Int).Mul(m.GetPrice(b.Ordinal), big.NewInt(1000)))
+		// totalMilliIsu.Sub(totalMilliIsu, new(big.Int).Mul(m.GetPrice(b.Ordinal), big.NewInt(1000)))
 
 		if b.Time <= currentTime {
 			itemBuilt[b.ItemID]++
 			power := m.GetPower(itemBought[b.ItemID])
+			itemPower[b.ItemID].Add(itemPower[b.ItemID], power)
+			if b.Time <= lastestUpdated {
+				continue
+			}
 			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(power, big.NewInt(currentTime-b.Time)))
 			totalPower.Add(totalPower, power)
-			itemPower[b.ItemID].Add(itemPower[b.ItemID], power)
 		} else {
 			buyingAt[b.Time] = append(buyingAt[b.Time], b)
 		}
@@ -417,14 +452,16 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []Adding, buyi
 			itemOnSale[m.ItemID] = 0 // 0 は 時刻 currentTime で購入可能であることを表す
 		}
 	}
-
-	schedule := []Schedule{
-		Schedule{
-			Time:       currentTime,
-			MilliIsu:   big2exp(totalMilliIsu),
-			TotalPower: big2exp(totalPower),
-		},
+	sched = Schedule{
+		Time:       currentTime,
+		MilliIsu:   big2exp(totalMilliIsu),
+		TotalPower: big2exp(totalPower),
 	}
+	lastestStatusTableMu.Lock()
+	lastestStatusTable[roomName] = sched
+	lastestStatusTableMu.Unlock()
+
+	schedule := []Schedule{sched}
 
 	// currentTime から 1000 ミリ秒先までシミュレーションする
 	for t := currentTime + 1; t <= currentTime+1000; t++ {
