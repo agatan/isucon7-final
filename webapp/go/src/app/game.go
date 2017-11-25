@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
+	"github.com/jmoiron/sqlx"
 )
 
 type GameRequest struct {
@@ -235,7 +236,6 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 
-	totalMilliIsu := new(big.Int)
 	var addings []Adding
 	err = tx.Select(&addings, "SELECT isu FROM adding WHERE room_name = ? AND time <= ?", roomName, reqTime)
 	if err != nil {
@@ -244,6 +244,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 
+	totalMilliIsu := new(big.Int)
 	for _, a := range addings {
 		totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
 	}
@@ -312,6 +313,36 @@ func getStatus(roomName string) (*GameStatus, error) {
 		tx.Rollback()
 		return nil, err
 	}
+	newAddings := []Adding{{RoomName: roomName, Time: currentTime}}
+	deletableTimes := []int64{}
+	var totalIsu = big.NewInt(0)
+	for _, a := range addings {
+		// adding は adding.time に isu を増加させる
+		if a.Time <= currentTime {
+			totalIsu.Add(totalIsu, str2big(a.Isu))
+			deletableTimes = append(deletableTimes, a.Time)
+		} else {
+			newAddings = append(newAddings, a)
+		}
+	}
+	newAddings[0].Isu = totalIsu.String()
+	if len(deletableTimes) > 0 {
+		query, args, err := sqlx.In("DELETE FROM adding WHERE room_name = ? AND time in (?)", roomName, deletableTimes)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		_, err = tx.Exec(query, args...)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE isu=isu", roomName, currentTime, totalIsu.String())
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
 
 	buyings := []Buying{}
 	err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
@@ -325,7 +356,7 @@ func getStatus(roomName string) (*GameStatus, error) {
 		return nil, err
 	}
 
-	status, err := calcStatus(currentTime, mItems, addings, buyings)
+	status, err := calcStatus(currentTime, mItems, newAddings, buyings)
 	if err != nil {
 		return nil, err
 	}
@@ -496,7 +527,9 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 	log.Println(ws.RemoteAddr(), "serveGameConn", roomName)
 	defer ws.Close()
 
-	muxByRoomName[roomName] = new(sync.Mutex)
+	if _, ok := muxByRoomName[roomName]; !ok {
+		muxByRoomName[roomName] = new(sync.Mutex)
+	}
 
 	status, err := getStatus(roomName)
 	if err != nil {
