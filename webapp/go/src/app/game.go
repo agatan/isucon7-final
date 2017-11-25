@@ -280,7 +280,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	return true
 }
 
-func getStatus(roomName string) (*GameStatus, error) {
+func getStatus(roomName string, ch chan *GameStatus) (*GameStatus, error) {
 	mu := muxByRoomName[roomName]
 	mu.Lock()
 	defer mu.Unlock()
@@ -355,6 +355,10 @@ func getStatus(roomName string) (*GameStatus, error) {
 	// calcStatusに時間がかかる可能性があるので タイムスタンプを取得し直す
 
 	status.Time = int64(time.Now().UnixNano()) / 1000000
+	select {
+	case ch <- status:
+	default:
+	}
 	return status, err
 }
 
@@ -518,7 +522,21 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 		muxByRoomName[roomName] = new(sync.Mutex)
 	}
 
-	status, err := getStatus(roomName)
+	tickerIsRunningMu.Lock()
+	ts, ok := tickerIsRunnings[roomName]
+	tickerIsRunningMu.Unlock()
+	var (
+		req  chan struct{}
+		recv chan *GameStatus
+	)
+	if ok {
+		req = ts.req
+		recv = ts.recv
+	} else {
+		req, recv = statusCalculator(roomName)
+	}
+
+	status, err := getStatus(roomName, recv)
 	if err != nil {
 		log.Println(err)
 		return
@@ -577,7 +595,7 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 
 			if success {
 				// GameResponse を返却する前に 反映済みの GameStatus を返す
-				status, err := getStatus(roomName)
+				status, err := getStatus(roomName, recv)
 				if err != nil {
 					log.Println(err)
 					return
@@ -599,11 +617,8 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 				return
 			}
 		case <-ticker.C:
-			status, err := getStatus(roomName)
-			if err != nil {
-				log.Println(err)
-				return
-			}
+			req <- struct{}{}
+			status := <-recv
 
 			err = ws.WriteJSON(status)
 			if err != nil {
@@ -614,4 +629,60 @@ func serveGameConn(ws *websocket.Conn, roomName string) {
 			return
 		}
 	}
+}
+
+var (
+	tickerIsRunningMu sync.Mutex
+	tickerIsRunnings  = map[string]struct {
+		req  chan struct{}
+		recv chan *GameStatus
+	}{}
+)
+
+func statusCalculator(roomName string) (chan struct{}, chan *GameStatus) {
+	req := make(chan struct{})
+	ch := make(chan *GameStatus)
+
+	status, err := getStatus(roomName, ch)
+	if err != nil {
+		panic(err)
+	}
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	tickerIsRunningMu.Lock()
+	tickerIsRunnings[roomName] = struct {
+		req  chan struct{}
+		recv chan *GameStatus
+	}{req: req, recv: ch}
+	tickerIsRunningMu.Unlock()
+
+	go func() {
+		defer close(req)
+		defer close(ch)
+		for {
+			select {
+			case <-ticker.C:
+				if isEmptyRoom(roomName) {
+					tickerIsRunningMu.Lock()
+					delete(tickerIsRunnings, roomName)
+					tickerIsRunningMu.Unlock()
+					return
+				}
+				status, err = getStatus(roomName, ch)
+				if err != nil {
+					log.Println(err)
+				}
+			case <-req:
+				status.Time = time.Now().UnixNano() / 1000000
+				ch <- status
+			case newstatus := <-ch:
+				if status.Time < newstatus.Time {
+					status = newstatus
+				}
+			}
+		}
+	}()
+
+	return req, ch
 }
