@@ -1,0 +1,418 @@
+=head2 Sat Nov 25 02:16:58 2017: C<Module> L<Test::Deep|Test::Deep>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.127>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:16:59 2017: C<Module> L<Math::BigInt|Math::BigInt>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.999811>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:00 2017: C<Module> L<Math::BigInt::GMP|Math::BigInt::GMP>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.6004>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:01 2017: C<Module> L<JSON|JSON>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.96>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:01 2017: C<Module> L<JSON::Types|JSON::Types>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.05>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:03 2017: C<Module> L<Mojolicious|Mojolicious>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 7.55>
+
+=item *
+
+C<EXE_FILES: script/hypnotoad script/mojo script/morbo>
+
+=back
+
+=head2 Sat Nov 25 02:17:04 2017: C<Module> L<Sub::Quote|Sub::Quote>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.004000>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:05 2017: C<Module> L<Sub::Exporter::Progressive|Sub::Exporter::Progressive>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.001013>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:05 2017: C<Module> L<Devel::GlobalDestruction|Devel::GlobalDestruction>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.14>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:05 2017: C<Module> L<Role::Tiny|Role::Tiny>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.000006>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:06 2017: C<Module> L<Class::Method::Modifiers|Class::Method::Modifiers>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.12>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:08 2017: C<Module> L<Moo|Moo>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.003002>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:09 2017: C<Module> L<Clone|Clone>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.39>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:09 2017: C<Module> L<Hash::Merge|Hash::Merge>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.200>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:09 2017: C<Module> L<MRO::Compat|MRO::Compat>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.13>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:10 2017: C<Module> L<SQL::Abstract|SQL::Abstract>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.84>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:15 2017: C<Module> L<DBI|DBI>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.637>
+
+=item *
+
+C<EXE_FILES: dbilogstrip dbiprof dbiproxy>
+
+=back
+
+=head2 Sat Nov 25 02:17:19 2017: C<Module> L<DBD::mysql|DBD::mysql>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 4.043>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Nov 25 02:17:19 2017: C<Module> L<Mojo::mysql|Mojo::mysql>
+
+=over 4
+
+=item *
+
+C<installed into: /home/isucon/webapp/perl/local/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.05>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
