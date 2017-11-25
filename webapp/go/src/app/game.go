@@ -199,7 +199,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	//   return false
 	// }
 
-	_, ok := updateRoomTime(tx, roomName, reqTime)
+	_, ok := updateRoomTime(nil, roomName, reqTime)
 	if !ok {
 		// tx.Rollback()
 		return false
