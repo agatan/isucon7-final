@@ -7,7 +7,10 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
-var redisPool *redis.Pool
+var (
+	redisPool       *redis.Pool
+	sharedRedisPool *redis.Pool
+)
 
 func initRedisPool() {
 	redisURL := os.Getenv("REDIS_URL")
@@ -25,4 +28,17 @@ func initRedisPool() {
 	conn := redisPool.Get()
 	defer conn.Close()
 	conn.Do("FLUSHALL")
+
+	sharedRedisURL := os.Getenv("SHARED_REDIS_URL")
+	if sharedRedisURL == "" {
+		sharedRedisURL = "redis://localhost:6379"
+	}
+	sharedRedisPool = &redis.Pool{
+		MaxIdle:     100,
+		IdleTimeout: 10 * 60 * time.Second,
+
+		Dial: func() (redis.Conn, error) {
+			return redis.DialURL(sharedRedisURL)
+		},
+	}
 }
