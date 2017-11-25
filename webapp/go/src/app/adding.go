@@ -19,13 +19,13 @@ type Adding struct {
 }
 
 func (a *Adding) GetKeySuffix() string {
-	return fmt.Sprintf("%s", a.RoomName)
+	return fmt.Sprintf("%s:%d", a.RoomName, a.Time)
 }
 
 var addingScorerFuncs = []types.ScorerFunc{
 	func(m types.Model) (string, interface{}) {
 		a := m.(*Adding)
-		return "time", a.Time
+		return fmt.Sprintf("%s:time", a.RoomName), a.Time
 	},
 }
 

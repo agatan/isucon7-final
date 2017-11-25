@@ -12,7 +12,6 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
-	"github.com/jmoiron/sqlx"
 )
 
 type GameRequest struct {
@@ -79,7 +78,7 @@ type Building struct {
 
 type GameStatus struct {
 	Time     int64      `json:"time"`
-	Adding   []Adding   `json:"adding"`
+	Adding   []*Adding  `json:"adding"`
 	Schedule []Schedule `json:"schedule"`
 	Items    []Item     `json:"items"`
 	OnSale   []OnSale   `json:"on_sale"`
@@ -160,34 +159,45 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 		return false
 	}
 
-	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, '0') ON DUPLICATE KEY UPDATE isu=isu", roomName, reqTime)
+	a := &Adding{RoomName: roomName, Time: reqTime}
+	err = addingStore.Get(a)
 	if err != nil {
-		log.Println(err)
-		tx.Rollback()
-		return false
+		a.Isu = "0"
 	}
-
-	var isuStr string
-	err = tx.QueryRow("SELECT isu FROM adding WHERE room_name = ? AND time = ? FOR UPDATE", roomName, reqTime).Scan(&isuStr)
-	if err != nil {
-		log.Println(err)
-		tx.Rollback()
-		return false
-	}
-	isu := str2big(isuStr)
+	//
+	// _, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, '0') ON DUPLICATE KEY UPDATE isu=isu", roomName, reqTime)
+	// if err != nil {
+	//   log.Println(err)
+	//   tx.Rollback()
+	//   return false
+	// }
+	//
+	// var isuStr string
+	// err = tx.QueryRow("SELECT isu FROM adding WHERE room_name = ? AND time = ? FOR UPDATE", roomName, reqTime).Scan(&isuStr)
+	// if err != nil {
+	//   log.Println(err)
+	//   tx.Rollback()
+	//   return false
+	// }
+	isu := str2big(a.Isu)
 
 	isu.Add(isu, reqIsu)
-	_, err = tx.Exec("UPDATE adding SET isu = ? WHERE room_name = ? AND time = ?", isu.String(), roomName, reqTime)
+	err = addingStore.Set(a)
 	if err != nil {
 		log.Println(err)
-		tx.Rollback()
 		return false
 	}
-
-	if err := tx.Commit(); err != nil {
-		log.Println(err)
-		return false
-	}
+	// _, err = tx.Exec("UPDATE adding SET isu = ? WHERE room_name = ? AND time = ?", isu.String(), roomName, reqTime)
+	// if err != nil {
+	//   log.Println(err)
+	//   tx.Rollback()
+	//   return false
+	// }
+	//
+	// if err := tx.Commit(); err != nil {
+	//   log.Println(err)
+	//   return false
+	// }
 	return true
 }
 
@@ -221,11 +231,12 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 
-	var addings []Adding
-	err = tx.Select(&addings, "SELECT isu FROM adding WHERE room_name = ? AND time <= ?", roomName, reqTime)
+	var addings []*Adding
+	err = addingStore.Select(&addings, addingStore.Query(fmt.Sprintf("%s:time", roomName)).LtEq(reqTime))
+	// err = tx.Select(&addings, "SELECT isu FROM adding WHERE room_name = ? AND time <= ?", roomName, reqTime)
 	if err != nil {
 		log.Println(err)
-		tx.Rollback()
+		// tx.Rollback()
 		return false
 	}
 
@@ -292,13 +303,14 @@ func getStatus(roomName string) (*GameStatus, error) {
 
 	mItems := MasterItems
 
-	addings := []Adding{}
-	err = tx.Select(&addings, "SELECT time, isu FROM adding WHERE room_name = ?", roomName)
+	addings := []*Adding{}
+	err = addingStore.Select(&addings, addingStore.Query(fmt.Sprintf("%s:time", roomName)))
+	// err = tx.Select(&addings, "SELECT time, isu FROM adding WHERE room_name = ?", roomName)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
-	newAddings := []Adding{{RoomName: roomName, Time: currentTime}}
+	newAddings := []*Adding{{RoomName: roomName, Time: currentTime}}
 	deletableTimes := []int64{}
 	var totalIsu = big.NewInt(0)
 	for _, a := range addings {
@@ -312,18 +324,20 @@ func getStatus(roomName string) (*GameStatus, error) {
 	}
 	newAddings[0].Isu = totalIsu.String()
 	if len(deletableTimes) > 0 {
-		query, args, err := sqlx.In("DELETE FROM adding WHERE room_name = ? AND time in (?)", roomName, deletableTimes)
-		if err != nil {
-			tx.Rollback()
-			return nil, err
-		}
-		_, err = tx.Exec(query, args...)
+		addingStore.RemoveBy(addingStore.Query(fmt.Sprintf("%s:time", roomName)).LtEq(currentTime))
+		// query, args, err := sqlx.In("DELETE FROM adding WHERE room_name = ? AND time in (?)", roomName, deletableTimes)
+		// if err != nil {
+		//   tx.Rollback()
+		//   return nil, err
+		// }
+		// _, err = tx.Exec(query, args...)
 		if err != nil {
 			tx.Rollback()
 			return nil, err
 		}
 	}
-	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE isu=isu", roomName, currentTime, totalIsu.String())
+	err = addingStore.Set(newAddings[0])
+	// _, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE isu=isu", roomName, currentTime, totalIsu.String())
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -352,7 +366,7 @@ func getStatus(roomName string) (*GameStatus, error) {
 	return status, err
 }
 
-func calcStatus(currentTime int64, mItems map[int]*mItem, addings []Adding, buyings []Buying) (*GameStatus, error) {
+func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buyings []Buying) (*GameStatus, error) {
 	var (
 		// 1ミリ秒に生産できる椅子の単位をミリ椅子とする
 		totalMilliIsu = big.NewInt(0)
@@ -367,7 +381,7 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []Adding, buyi
 		itemPower0   = map[int]Exponential{} // ItemID => currentTime における Power
 		itemBuilt0   = map[int]int{}         // ItemID => currentTime における BuiltCount
 
-		addingAt = map[int64]Adding{}   // Time => currentTime より先の Adding
+		addingAt = map[int64]*Adding{}  // Time => currentTime より先の Adding
 		buyingAt = map[int64][]Buying{} // Time => currentTime より先の Buying
 	)
 
@@ -471,7 +485,7 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []Adding, buyi
 		}
 	}
 
-	gsAdding := []Adding{}
+	gsAdding := []*Adding{}
 	for _, a := range addingAt {
 		gsAdding = append(gsAdding, a)
 	}
