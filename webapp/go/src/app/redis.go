@@ -22,4 +22,7 @@ func initRedisPool() {
 			return redis.DialURL(redisURL)
 		},
 	}
+	conn := redisPool.Get()
+	defer conn.Close()
+	conn.Do("FLUSHALL")
 }
