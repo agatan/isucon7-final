@@ -41,4 +41,8 @@ func initRedisPool() {
 			return redis.DialURL(sharedRedisURL)
 		},
 	}
+
+	sharedconn := sharedRedisPool.Get()
+	defer sharedconn.Close()
+	sharedconn.Do("DEL", "host:member_count")
 }
