@@ -233,7 +233,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
 	}
 
-	var buyings []Buying
+	var buyings []*Buying
 	err = buyingStore.Select(&buyings, buyingStore.Query(fmt.Sprintf("%s:time", roomName)))
 	// err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
 	if err != nil {
@@ -338,7 +338,7 @@ func getStatus(roomName string) (*GameStatus, error) {
 		return nil, err
 	}
 
-	buyings := []Buying{}
+	buyings := []*Buying{}
 	err = buyingStore.Select(&buyings, buyingStore.Query(fmt.Sprintf("%s:time", roomName)))
 	// err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
 	if err != nil {
