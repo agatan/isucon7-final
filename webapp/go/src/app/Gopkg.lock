@@ -2,10 +2,22 @@
 
 
 [[projects]]
+  name = "github.com/creasty/defaults"
+  packages = ["."]
+  revision = "79c39719194bbe3c1a00f7909871aeac028849bf"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
   version = "v1.1.0"
+
+[[projects]]
+  name = "github.com/garyburd/redigo"
+  packages = ["internal","redis"]
+  revision = "47dc60e71eed504e3ef8e77ee3c6fe720f3be57f"
+  version = "v1.3.0"
 
 [[projects]]
   name = "github.com/go-sql-driver/mysql"
@@ -38,6 +50,12 @@
   version = "v1.2.0"
 
 [[projects]]
+  name = "github.com/izumin5210/ro"
+  packages = [".","internal/query","internal/store","types"]
+  revision = "04cfbdb5ff0a54aa33f119900c5fe49e9bc8d22c"
+  version = "v0.2.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/jmoiron/sqlx"
   packages = [".","reflectx"]
@@ -58,6 +76,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "482aaf3ac2e120969570a0900ebe83c8389808f5efba882a9036602aafff0602"
+  inputs-digest = "ff92a78137ee05f4d272b92a727ee7564c790a8bef7510e3b51f70086e5b17f8"
   solver-name = "gps-cdcl"
   solver-version = 1
