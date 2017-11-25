@@ -188,7 +188,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	mu.Lock()
 	defer mu.Unlock()
 
-	updateRoomTime(roomName, reqTime)
+	_, ok := updateRoomTime(roomName, reqTime)
 	if !ok {
 		return false
 	}
