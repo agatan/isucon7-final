@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
+	"github.com/jmoiron/sqlx"
 )
 
 type GameRequest struct {
@@ -288,6 +289,8 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	return true
 }
 
+var currentAddingByRoomName map[string]Adding
+
 func getStatus(roomName string) (*GameStatus, error) {
 	mu := muxByRoomName[roomName]
 	mu.Lock()
@@ -312,6 +315,31 @@ func getStatus(roomName string) (*GameStatus, error) {
 		tx.Rollback()
 		return nil, err
 	}
+	currentAdding := currentAddingByRoomName[roomName]
+	newAddings := []Adding{currentAdding}
+	deletableTimes := []int64{}
+	var totalMilliIsu = big.NewInt(0)
+	totalMilliIsu.UnmarshalText([]byte(currentAdding.Isu))
+	for _, a := range addings {
+		// adding は adding.time に isu を増加させる
+		if a.Time <= currentTime {
+			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
+			deletableTimes = append(deletableTimes, a.Time)
+		} else {
+			newAddings = append(newAddings, a)
+		}
+	}
+	newAddings[0].Isu = totalMilliIsu.String()
+	query, args, err := sqlx.In("DELETE FROM adding WHERE tiem in (?)", deletableTimes)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	_, err = tx.Exec(query, args)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
 
 	buyings := []Buying{}
 	err = tx.Select(&buyings, "SELECT item_id, ordinal, time FROM buying WHERE room_name = ?", roomName)
@@ -325,7 +353,7 @@ func getStatus(roomName string) (*GameStatus, error) {
 		return nil, err
 	}
 
-	status, err := calcStatus(currentTime, mItems, addings, buyings)
+	status, err := calcStatus(currentTime, mItems, newAddings, buyings)
 	if err != nil {
 		return nil, err
 	}
