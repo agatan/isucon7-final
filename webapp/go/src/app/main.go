@@ -80,7 +80,12 @@ func getRoomHandler(w http.ResponseWriter, r *http.Request) {
 	roomName := vars["room_name"]
 	path := "/ws/" + url.PathEscape(roomName)
 
+	muxByRoomNameMu.Lock()
+	if _, ok := muxByRoomName[roomName]; !ok {
+		muxByRoomName[roomName] = new(sync.Mutex)
+	}
 	host := getHostFromRoomName(roomName)
+	muxByRoomNameMu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {

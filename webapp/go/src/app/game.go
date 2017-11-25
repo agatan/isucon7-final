@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"math/big"
-	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -502,12 +501,6 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buy
 func serveGameConn(ws *websocket.Conn, roomName string) {
 	log.Println(ws.RemoteAddr(), "serveGameConn", roomName)
 	defer ws.Close()
-
-	muxByRoomNameMu.Lock()
-	if _, ok := muxByRoomName[roomName]; !ok {
-		muxByRoomName[roomName] = new(sync.Mutex)
-	}
-	muxByRoomNameMu.Unlock()
 
 	status, err := getStatus(roomName)
 	if err != nil {
