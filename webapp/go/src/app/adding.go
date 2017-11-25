@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"math/big"
 	"sync"
@@ -39,12 +40,17 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 
 	var isuStr string
 	err = tx.QueryRow("SELECT isu FROM adding WHERE room_name = ? AND time = ? ", roomName, reqTime).Scan(&isuStr)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		log.Println(err)
 		tx.Rollback()
 		return false
 	}
-	isu := str2big(isuStr)
+	var isu *big.Int
+	if err == sql.ErrNoRows {
+		isu = big.NewInt(0)
+	} else {
+		isu = str2big(isuStr)
+	}
 
 	isu.Add(isu, reqIsu)
 	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE isu=isu", roomName, reqTime, isu.String())

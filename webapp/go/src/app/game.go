@@ -277,6 +277,9 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 }
 
 func getStatus(roomName string) (*GameStatus, error) {
+	mu := muxByRoomName[roomName]
+	mu.Lock()
+	defer mu.Unlock()
 	tx, err := db.Beginx()
 	if err != nil {
 		return nil, err
