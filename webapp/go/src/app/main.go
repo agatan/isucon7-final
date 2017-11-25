@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/md5"
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -78,11 +78,12 @@ func getRoomHandler(w http.ResponseWriter, r *http.Request) {
 	roomName := vars["room_name"]
 	path := "/ws/" + url.PathEscape(roomName)
 
-	m := md5.Sum([]byte(roomName))
+	m := sha1.Sum([]byte(roomName))
 	var n int
 	for _, b := range m[:] {
 		n += int(b)
 	}
+	fmt.Printf("m: %d\n", n%len(webHosts))
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {
