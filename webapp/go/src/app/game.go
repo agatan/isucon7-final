@@ -162,38 +162,21 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 	mu.Lock()
 	defer mu.Unlock()
 
+	_, ok := updateRoomTime(roomName, reqTime)
+	if !ok {
+		return false
+	}
+
 	tx, err := db.Beginx()
 	if err != nil {
 		log.Println(err)
 		return false
 	}
 
-	_, ok := updateRoomTime(tx, roomName, reqTime)
-	if !ok {
-		tx.Rollback()
-		return false
-	}
-
-	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, '0') ON DUPLICATE KEY UPDATE isu=isu", roomName, reqTime)
+	val := reqIsu.String()
+	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE isu = isu + VALUES(isu)", roomName, reqTime, val)
 	if err != nil {
-		log.Println(err)
-		tx.Rollback()
-		return false
-	}
-
-	var isuStr string
-	err = tx.QueryRow("SELECT isu FROM adding WHERE room_name = ? AND time = ? FOR UPDATE", roomName, reqTime).Scan(&isuStr)
-	if err != nil {
-		log.Println(err)
-		tx.Rollback()
-		return false
-	}
-	isu := str2big(isuStr)
-
-	isu.Add(isu, reqIsu)
-	_, err = tx.Exec("UPDATE adding SET isu = ? WHERE room_name = ? AND time = ?", isu.String(), roomName, reqTime)
-	if err != nil {
-		log.Println(err)
+		log.Printf("%v", err)
 		tx.Rollback()
 		return false
 	}
@@ -202,6 +185,7 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 		log.Println(err)
 		return false
 	}
+
 	return true
 }
 
@@ -216,7 +200,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 
-	_, ok := updateRoomTime(tx, roomName, reqTime)
+	_, ok := updateRoomTime(roomName, reqTime)
 	if !ok {
 		tx.Rollback()
 		return false
@@ -298,7 +282,7 @@ func getStatus(roomName string) (*GameStatus, error) {
 		return nil, err
 	}
 
-	currentTime, ok := updateRoomTime(tx, roomName, 0)
+	currentTime, ok := updateRoomTime(roomName, 0)
 	if !ok {
 		tx.Rollback()
 		return nil, fmt.Errorf("updateRoomTime failure")
