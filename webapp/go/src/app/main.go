@@ -111,6 +111,7 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	initDB()
 	initHosts()
+	initMasterItems(db)
 
 	if debug {
 		go func() {
