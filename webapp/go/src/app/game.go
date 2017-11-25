@@ -362,7 +362,7 @@ func getStatus(roomName string) (*GameStatus, error) {
 	return status, err
 }
 
-func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buyings []Buying) (*GameStatus, error) {
+func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buyings []*Buying) (*GameStatus, error) {
 	var (
 		// 1ミリ秒に生産できる椅子の単位をミリ椅子とする
 		totalMilliIsu = big.NewInt(0)
@@ -377,8 +377,8 @@ func calcStatus(currentTime int64, mItems map[int]*mItem, addings []*Adding, buy
 		itemPower0   = map[int]Exponential{} // ItemID => currentTime における Power
 		itemBuilt0   = map[int]int{}         // ItemID => currentTime における BuiltCount
 
-		addingAt = map[int64]*Adding{}  // Time => currentTime より先の Adding
-		buyingAt = map[int64][]Buying{} // Time => currentTime より先の Buying
+		addingAt = map[int64]*Adding{}   // Time => currentTime より先の Adding
+		buyingAt = map[int64][]*Buying{} // Time => currentTime より先の Buying
 	)
 
 	for itemID := range mItems {
