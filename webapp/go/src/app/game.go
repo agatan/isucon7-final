@@ -182,6 +182,7 @@ func addIsu(roomName string, reqIsu *big.Int, reqTime int64) bool {
 	isu := str2big(a.Isu)
 
 	isu.Add(isu, reqIsu)
+	a.Isu = isu.String()
 	err = addingStore.Set(a)
 	if err != nil {
 		log.Println(err)
@@ -310,9 +311,9 @@ func getStatus(roomName string) (*GameStatus, error) {
 		tx.Rollback()
 		return nil, err
 	}
-	newAddings := []*Adding{{RoomName: roomName, Time: currentTime}}
 	deletableTimes := []int64{}
 	var totalIsu = big.NewInt(0)
+	newAddings := []*Adding{{RoomName: roomName, Time: currentTime, Isu: totalIsu.String()}}
 	for _, a := range addings {
 		// adding は adding.time に isu を増加させる
 		if a.Time <= currentTime {

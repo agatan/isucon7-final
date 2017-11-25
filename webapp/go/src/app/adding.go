@@ -13,8 +13,8 @@ var (
 
 type Adding struct {
 	ro.Model
-	RoomName string `json:"-" db:"room_name" redis:"-"`
-	Time     int64  `json:"time" db:"time" redis:"-"`
+	RoomName string `json:"-" db:"room_name" redis:"room_name"`
+	Time     int64  `json:"time" db:"time" redis:"time"`
 	Isu      string `json:"isu" db:"isu" redis:"isu"`
 }
 
