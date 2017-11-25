@@ -10,8 +10,14 @@ update:
 test:
 	go test -v ./webapp/go/src/app
 
+.PHONY: app
 app:
 	go build -v ./webapp/go/src/app
+	cp ./app ./webapp/go/app
+
+.PHONY: run
+run: app
+	cd ./webapp/go/ && ./app
 
 .PHONY: deploy
 deploy:
