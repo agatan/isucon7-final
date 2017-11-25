@@ -111,6 +111,7 @@ func main() {
 	initRedisPool()
 	initHosts()
 	initRoom()
+	initRoomTime()
 	initMasterItems(db)
 	muxByRoomName = map[string]*sync.Mutex{}
 
