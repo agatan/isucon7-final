@@ -3,15 +3,13 @@ package main
 import (
 	"log"
 	"time"
-
-	"github.com/jmoiron/sqlx"
 )
 
 var (
 	roomTimeByName map[string]int64
 )
 
-func updateRoomTime(tx *sqlx.Tx, roomName string, reqTime int64) (int64, bool) {
+func updateRoomTime(roomName string, reqTime int64) (int64, bool) {
 	roomTime := roomTimeByName[roomName]
 
 	var currentTime int64 = int64(time.Now().UnixNano()) / 1000000
