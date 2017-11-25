@@ -236,7 +236,6 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 
-	totalMilliIsu := new(big.Int)
 	var addings []Adding
 	err = tx.Select(&addings, "SELECT isu FROM adding WHERE room_name = ? AND time <= ?", roomName, reqTime)
 	if err != nil {
@@ -245,6 +244,7 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 		return false
 	}
 
+	totalMilliIsu := new(big.Int)
 	for _, a := range addings {
 		totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
 	}
@@ -289,8 +289,6 @@ func buyItem(roomName string, itemID int, countBought int, reqTime int64) bool {
 	return true
 }
 
-var currentAddingByRoomName map[string]Adding
-
 func getStatus(roomName string) (*GameStatus, error) {
 	mu := muxByRoomName[roomName]
 	mu.Lock()
@@ -315,30 +313,35 @@ func getStatus(roomName string) (*GameStatus, error) {
 		tx.Rollback()
 		return nil, err
 	}
-	currentAdding := currentAddingByRoomName[roomName]
-	newAddings := []Adding{currentAdding}
+	newAddings := []Adding{{RoomName: roomName, Time: currentTime}}
 	deletableTimes := []int64{}
 	var totalMilliIsu = big.NewInt(0)
-	totalMilliIsu.UnmarshalText([]byte(currentAdding.Isu))
 	for _, a := range addings {
 		// adding は adding.time に isu を増加させる
 		if a.Time <= currentTime {
-			totalMilliIsu.Add(totalMilliIsu, new(big.Int).Mul(str2big(a.Isu), big.NewInt(1000)))
+			totalMilliIsu.Add(totalMilliIsu, str2big(a.Isu))
 			deletableTimes = append(deletableTimes, a.Time)
 		} else {
 			newAddings = append(newAddings, a)
 		}
 	}
 	newAddings[0].Isu = totalMilliIsu.String()
-	query, args, err := sqlx.In("DELETE FROM adding WHERE tiem in (?)", deletableTimes)
+	_, err = tx.Exec("INSERT INTO adding(room_name, time, isu) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE isu=isu", roomName, currentTime, newAddings[0].Isu)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
-	_, err = tx.Exec(query, args)
-	if err != nil {
-		tx.Rollback()
-		return nil, err
+	if len(deletableTimes) > 0 {
+		query, args, err := sqlx.In("DELETE FROM adding WHERE room_name = ? AND time in (?)", roomName, deletableTimes)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		_, err = tx.Exec(query, args...)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	buyings := []Buying{}
